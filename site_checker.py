@@ -21,8 +21,14 @@ with open("list_sites.txt") as file:
     sites_file = file.read()
     sites_list = sites_file.split()
 
-
-two = three = four = five = unreach = 0
+status_code_count = {
+    '200': 0,
+    '3XX': 0,
+    '4XX': 0,
+    '5XX': 0,
+    'unreached': 0,
+    'total': 0
+}
 
 for site in sites_list:
     try:
@@ -30,19 +36,25 @@ for site in sites_list:
         print(f'{response.status_code} - {site} ({gethostbyname(site)}) -> '
               f'{response.url} - {response.elapsed.total_seconds()}')
         if response.status_code == 200:
-            two += 1
-        elif 300 <= response.status_code < 400:
-            three += 1
-        elif 400 <= response.status_code < 500:
-            four += 1
-        elif response.status_code > 499:
-            five += 1
+            status_code_count['200'] += 1
+        elif 300 <= response.status_code <= 399:
+            status_code_count['3XX'] += 1
+        elif 400 <= response.status_code <= 499:
+            status_code_count['4XX'] += 1
+        elif response.status_code >= 500:
+            status_code_count['5XX'] += 1
         sleep(SLEEP_SECONDS)
     except requests.ConnectionError:
         print(f'000 - {site} - unreachable')
-        unreach += 1
+        status_code_count['unreached'] += 1
     except KeyboardInterrupt:
         print('The program was stopped by the user')
         quit()
+    status_code_count['total'] += 1
 
-print(f'Sites checked: {len(sites_list)} | 200: {two} | 3xx: {three} | 4xx: {if_color(four)} | 5xx: {if_color(five)} | unreached: {if_color(unreach)}')
+print(f'Sites checked: {status_code_count["total"]} | '
+      f'200: {status_code_count["200"]} | '
+      f'3xx: {status_code_count["3XX"]} | '
+      f'4xx: {if_color(status_code_count["4XX"])} | '
+      f'5xx: {if_color(status_code_count["5XX"])} | '
+      f'unreached: {if_color(status_code_count["unreached"])}')
