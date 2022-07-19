@@ -60,8 +60,7 @@ def checker(sites_list):
     status_code_count['4XX'] = if_color(status_code_count['4XX'])
     status_code_count['5XX'] = if_color(status_code_count['5XX'])
     status_code_count['unreached'] = if_color(status_code_count['unreached'])
-    values = list(status_code_count.values())
-    print(RESULT.format(*values))
+    print(RESULT.format(*status_code_count.values()))
 
 
 if __name__ == '__main__':
