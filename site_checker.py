@@ -34,6 +34,11 @@ def checker(sites_list):
         'unreached': 0
     }
 
+    try:
+        assert len(sites_list) != 0
+    except AssertionError:
+        quit('The list of sites is empty!')
+
     for site in sites_list:
         try:
             response = requests.get('http://' + site, headers=REQUEST_HEADERS)
@@ -53,8 +58,7 @@ def checker(sites_list):
             print(f'000 - {site} - unreachable')
             status_code_count['unreached'] += 1
         except KeyboardInterrupt:
-            print('The program was stopped by the user')
-            quit()
+            quit('\nThe program was stopped by the user')
         status_code_count['total'] += 1
 
     status_code_count['4XX'] = if_color(status_code_count['4XX'])
