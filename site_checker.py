@@ -35,8 +35,9 @@ def checker(sites_list):
     }
 
     try:
-        assert len(sites_list) != 0
-    except AssertionError:
+        if len(sites_list) == 0:
+            raise ValueError
+    except ValueError:
         quit('The list of sites is empty!')
 
     for site in sites_list:
