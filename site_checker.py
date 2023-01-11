@@ -1,44 +1,40 @@
-import requests
 from socket import gethostbyname
 from time import sleep
 
-SLEEP_SECONDS = 1
-REQUEST_HEADERS = {
+import requests
+
+SLEEP_SECONDS: int = 1
+REQUEST_HEADERS: dict = {
     'User-Agent': 'melax08 Site Checker v1'
 }
-RESULT = ('Sites checked: {} | '
-          '200: {} | '
-          '3xx: {} | '
-          '4xx: {} | '
-          '5xx: {} | '
-          'unreached: {}')
 
 
-def if_color(amount):
+def if_color(amount) -> str:
     """Makes not zero string or number red color."""
-    if amount > 0:
-        amount = "\033[91m{}".format(amount)+"\033[0m"
-        return amount
-    else:
-        return amount
+    return f'\033[91m{amount}\033[0m' if amount else amount
 
 
-def checker(sites_list):
-    """Main function."""
-    status_code_count = {
-        'total': 0,
-        '200': 0,
-        '3XX': 0,
-        '4XX': 0,
-        '5XX': 0,
-        'unreached': 0
-    }
+def print_check_result(results: dict, checked: int, unreached: int) -> None:
+    """Print check results."""
+    results = sorted(results.items())
+    unreached = if_color(unreached)
+    print(f'Sites checked: {checked}', end=' | ')
+    for status_code, count in results:
+        if status_code > 399:
+            count = if_color(count)
+        print(f'{status_code}: {count}', end=' | ')
+    print(f'unreached: {unreached}')
 
-    try:
-        if len(sites_list) == 0:
-            raise ValueError
-    except ValueError:
-        quit('The list of sites is empty!')
+
+def checker(sites_list: list) -> None:
+    """Check every site in list and return conclusion."""
+    total = 0
+    unreached = 0
+    status_code_count = dict()
+
+    if not len(sites_list):
+        print('The list of sites is empty!')
+        raise SystemExit(1)
 
     for site in sites_list:
         try:
@@ -46,30 +42,25 @@ def checker(sites_list):
             print(
                 f'{response.status_code} - {site} ({gethostbyname(site)}) -> '
                 f'{response.url} - {response.elapsed.total_seconds()}')
-            if response.status_code == 200:
-                status_code_count['200'] += 1
-            elif 300 <= response.status_code <= 399:
-                status_code_count['3XX'] += 1
-            elif 400 <= response.status_code <= 499:
-                status_code_count['4XX'] += 1
-            elif response.status_code >= 500:
-                status_code_count['5XX'] += 1
+            if status_code_count.get(response.status_code) is None:
+                status_code_count[response.status_code] = 1
+            else:
+                status_code_count[response.status_code] += 1
+            total += 1
             sleep(SLEEP_SECONDS)
         except requests.ConnectionError:
             print(f'000 - {site} - unreachable')
-            status_code_count['unreached'] += 1
+            unreached += 1
+            total += 1
         except KeyboardInterrupt:
-            quit('\nThe program was stopped by the user')
-        status_code_count['total'] += 1
+            print('The program was stopped by the user, here are results:')
+            print_check_result(status_code_count, total, unreached)
+            raise SystemExit(1)
 
-    status_code_count['4XX'] = if_color(status_code_count['4XX'])
-    status_code_count['5XX'] = if_color(status_code_count['5XX'])
-    status_code_count['unreached'] = if_color(status_code_count['unreached'])
-    print(RESULT.format(*status_code_count.values()))
+    print_check_result(status_code_count, total, unreached)
 
 
 if __name__ == '__main__':
-    with open("list_sites.txt") as file:
-        sites_file = file.read()
-        sites_list = sites_file.split()
-    checker(sites_list)
+    with open('list_sites.txt') as file:
+        sites = file.read().split()
+    checker(sites)
