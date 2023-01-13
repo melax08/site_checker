@@ -1,5 +1,6 @@
 from socket import gethostbyname
 from time import sleep
+from collections import defaultdict
 
 import requests
 
@@ -30,7 +31,7 @@ def checker(sites_list: list) -> None:
     """Check every site in list and return conclusion."""
     total = 0
     unreached = 0
-    status_code_count = dict()
+    status_code_count = defaultdict(int)
 
     if not len(sites_list):
         print('The list of sites is empty!')
@@ -42,10 +43,8 @@ def checker(sites_list: list) -> None:
             print(
                 f'{response.status_code} - {site} ({gethostbyname(site)}) -> '
                 f'{response.url} - {response.elapsed.total_seconds()}')
-            if status_code_count.get(response.status_code) is None:
-                status_code_count[response.status_code] = 1
-            else:
-                status_code_count[response.status_code] += 1
+
+            status_code_count[response.status_code] += 1
             total += 1
             sleep(SLEEP_SECONDS)
         except requests.ConnectionError:
