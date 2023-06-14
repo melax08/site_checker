@@ -6,4 +6,5 @@ REQUEST_HEADERS: dict = {
 }
 REQUEST_TIMEOUT: int = 10
 VERIFY: bool = False
-SITES_LIST_FILE = Path(__file__).parent / 'sites.txt'
+SITES_LIST_FILE: Path = Path(__file__).parent / 'sites.txt'
+START_BAD_STATUS_CODE: int = 400
