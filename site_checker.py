@@ -1,37 +1,41 @@
 from socket import gethostbyname
 from time import sleep
 from collections import defaultdict
+from typing import Union
+import urllib3
 
 import requests
 
-SLEEP_SECONDS: int = 1
-REQUEST_HEADERS: dict = {
-    'User-Agent': 'melax08 Site Checker v1'
-}
+from constants import (SLEEP_SECONDS,
+                       REQUEST_HEADERS,
+                       REQUEST_TIMEOUT,
+                       VERIFY,
+                       SITES_LIST_FILE)
 
 
-def if_color(amount) -> str:
+def if_color(amount: Union[str, int]) -> Union[str, int]:
     """Makes not zero string or number red color."""
     return f'\033[91m{amount}\033[0m' if amount else amount
 
 
-def print_check_result(results: dict, checked: int, unreached: int) -> None:
+def print_check_result(data: dict) -> None:
     """Print check results."""
-    results = sorted(results.items())
-    unreached = if_color(unreached)
-    print(f'Sites checked: {checked}', end=' | ')
-    for status_code, count in results:
+    total = sum(data.values())
+    unreached = if_color(data.pop('unreached', 0))
+    statuses = sorted(data.items())
+    result = [f'Sites checked: {total}']
+    for status_code, count in statuses:
         if status_code > 399:
             count = if_color(count)
-        print(f'{status_code}: {count}', end=' | ')
-    print(f'unreached: {unreached}')
+        result.append(f'{status_code}: {count}')
+    if unreached:
+        result.append(f'unreached: {unreached}')
+    print(' | '.join(result))
 
 
 def checker(sites_list: list) -> None:
     """Check every site in list and return conclusion."""
-    total = 0
-    unreached = 0
-    status_code_count = defaultdict(int)
+    checker_data = defaultdict(int)
 
     if not len(sites_list):
         print('The list of sites is empty!')
@@ -39,27 +43,32 @@ def checker(sites_list: list) -> None:
 
     for site in sites_list:
         try:
-            response = requests.get('http://' + site, headers=REQUEST_HEADERS)
+            response = requests.get(
+                'http://' + site,
+                headers=REQUEST_HEADERS,
+                timeout=REQUEST_TIMEOUT,
+                verify=VERIFY
+            )
             print(
                 f'{response.status_code} - {site} ({gethostbyname(site)}) -> '
                 f'{response.url} - {response.elapsed.total_seconds()}')
 
-            status_code_count[response.status_code] += 1
-            total += 1
+            checker_data[response.status_code] += 1
             sleep(SLEEP_SECONDS)
-        except requests.ConnectionError:
+        except requests.RequestException:
             print(f'000 - {site} - unreachable')
-            unreached += 1
-            total += 1
+            checker_data['unreached'] += 1
         except KeyboardInterrupt:
-            print('The program was stopped by the user, here are results:')
-            print_check_result(status_code_count, total, unreached)
+            print('The program was stopped by the user. '
+                  'Here are some partial results:')
+            print_check_result(checker_data)
             raise SystemExit(1)
 
-    print_check_result(status_code_count, total, unreached)
+    print_check_result(checker_data)
 
 
 if __name__ == '__main__':
-    with open('list_sites.txt') as file:
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    with open(SITES_LIST_FILE) as file:
         sites = file.read().split()
     checker(sites)
