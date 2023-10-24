@@ -1,0 +1,6 @@
+# Here you need to list a list of sites, each on a new line.
+# Example:
+google.com
+builder.2241.ru
+facebook.com
+someunexistentdomain.com
