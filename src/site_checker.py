@@ -1,6 +1,6 @@
 import re
 import sys
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 from socket import gethostbyname
 from time import sleep
 from collections import defaultdict
@@ -9,8 +9,10 @@ import urllib3
 
 import requests
 from requests.exceptions import HTTPError
+from requests.models import Response
 
-from constants import REQUEST_TIMEOUT, START_BAD_STATUS_CODE, ERROR_EXIT_CODE
+from constants import (REQUEST_TIMEOUT, START_BAD_STATUS_CODE, ERROR_EXIT_CODE,
+                       MIN_CONTENT_LENGTH)
 from configs import configure_arguments
 from exceptions import BadSite
 
@@ -109,6 +111,22 @@ class Checker:
 
         print(' | '.join(result))
 
+    @classmethod
+    def __check_content_length(
+            cls, response: Response
+    ) -> Tuple[str, Optional[str]]:
+        """
+        Check the content length of response with status code 200.
+        This is necessary because some sites may give a 200 response code,
+        but will not work correctly, returning a blank page.
+        """
+        if (response.status_code == requests.codes.ok
+                and len(response.content) < MIN_CONTENT_LENGTH):
+            return (cls.colorize('!'),
+                    f'Content length is too small: {len(response.content)}')
+
+        return '', None
+
     def __check_site(self, site: str) -> None:
         """Makes HTTP-request to the specified URL, collects information about
         the request."""
@@ -121,8 +139,11 @@ class Checker:
         try:
             response = requests.get(url, **self.__configure_request_params())
 
+            alert, possible_error = self.__check_content_length(response)
+
             response_info = (
-                f'{response.status_code} - {url} ({gethostbyname(domain)}) -> '
+                f'{response.status_code}{alert} - {url} '
+                f'({gethostbyname(domain)}) -> '
                 f'{response.url} - {response.elapsed.total_seconds()}'
             )
             print(response_info)
@@ -132,7 +153,7 @@ class Checker:
                 'status_code': response.status_code,
                 'headers': response.headers,
                 'history': response.history,
-                'err_reason': None
+                'err_reason': possible_error
             }
 
             response.raise_for_status()

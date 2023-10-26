@@ -1,5 +1,11 @@
 # Python CLI site checker
 
+<div>
+  <a href="#Features">Features</a>&nbsp;&nbsp;&nbsp;
+  <a href="#Installation">Installation</a>&nbsp;&nbsp;&nbsp;
+  <a href="#How-to-use">How to use</a>&nbsp;&nbsp;&nbsp;
+</div>
+
 ## Information
 
 ### Description
