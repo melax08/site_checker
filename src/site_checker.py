@@ -12,18 +12,27 @@ from requests.exceptions import HTTPError
 from requests.models import Response
 
 from constants import (REQUEST_TIMEOUT, START_BAD_STATUS_CODE, ERROR_EXIT_CODE,
-                       MIN_CONTENT_LENGTH)
+                       MIN_CONTENT_LENGTH, SUCCESS_EXIT_CODE)
 from configs import configure_arguments
 from exceptions import BadSite
 
 
 class Checker:
+    EXIT_ITEM: str = '0'
     URL_REGEXP: str = r'(https?://)?([.\w-]+\.[\w-]{2,})(:\d+)?(/.+)?'
+    PROBLEM_TEMPLATE = (
+            'Requested url: {}\n'
+            'Destination url: {}\n'
+            'Response status code: {}\n'
+            'Error reason: {}\n'
+            'Redirects: {}'
+    )
 
     def __init__(self, args):
         self.args = args
         self.__sites_to_check: List[str] = self.__get_sites_to_check()
         self.__checked_sites: Dict[str, dict] = dict()
+        self.__interactive_menu: Optional[str] = None
 
     def __get_sites_to_check(self) -> List[str]:
         """
@@ -70,46 +79,117 @@ class Checker:
                 self.__check_site(site)
                 sleep(self.args.sleep)
 
+            self.__calculate_results()
             self.__print_results()
         except KeyboardInterrupt:
-            if len(self.__checked_sites):
-                print('The program was stopped by the user. '
-                      'Here are some partial results:')
-                self.__print_results()
-            else:
-                print('The program was stopped by the user.')
+            print('The program was stopped by the user.')
+            self.__calculate_results()
+            self.__print_results()
 
             raise SystemExit(ERROR_EXIT_CODE)
 
-    def __calculate_results(self) -> Tuple[int, Dict[Union[str, int], int]]:
+        try:
+            self.__run_interactive_error_checking()
+        except KeyboardInterrupt:
+            raise SystemExit(ERROR_EXIT_CODE)
+
+    def __print_errors_menu(self):
+        """Print interactive menu with errors."""
+        if self.__interactive_menu is None:
+            message = ['Here are responses with errors:']
+            message.extend(
+                [
+                    f'{number}: {url}'
+                    for number, url in self.__sites_with_error_map.items()
+                ]
+            )
+            self.__interactive_menu = '\n'.join(message)
+
+        print(self.__interactive_menu)
+
+    def __check_selected_item(self, item: str):
+        """Checks the validity of a user-specified menu item."""
+        if item == self.EXIT_ITEM:
+            raise SystemExit(SUCCESS_EXIT_CODE)
+        return (not item.isnumeric()
+                or int(item) not in self.__sites_with_error_map)
+
+    def __run_interactive_error_checking(self):
+        if self.__sites_with_error_map:
+            self.__print_errors_menu()
+            print('Select the number of response you want to check, '
+                  'or 0 to exit.')
+            selected_item = input()
+            while self.__check_selected_item(selected_item):
+                print(f'Please, write a correct number or 0 to exit:')
+                selected_item = input()
+
+            self.__print_information_about_error(int(selected_item))
+            print('\nTo another check, press enter.')
+            input()
+            self.__run_interactive_error_checking()
+
+    @staticmethod
+    def __processing_redirects(redirects: Optional[list]) -> Optional[str]:
+        """Generate information message about redirects."""
+        if redirects:
+            redirects_message = [f'({len(redirects)}):']
+            for redirect in redirects:
+                redirects_message.append(
+                    f'- {redirect.url} -> {redirect.headers["Location"]}'
+                )
+
+            return '\n'.join(redirects_message)
+
+    def __print_information_about_error(self, number: int):
+        """Print all information about user-specified problem."""
+        url = self.__sites_with_error_map[number]
+        response_data = self.__checked_sites[url]
+        redirects = self.__processing_redirects(response_data.get('history'))
+        print(self.PROBLEM_TEMPLATE.format(
+            url,
+            response_data.get('destination_url'),
+            response_data.get('status_code'),
+            response_data.get('err_reason'),
+            redirects
+        ))
+
+    def __calculate_results(self) -> None:
         """Calculate site checking information."""
         statuses = defaultdict(int)
+        sites_with_errors = []
 
-        for result in self.__checked_sites.values():
+        for url, result in self.__checked_sites.items():
             status_code = result.get('status_code')
-            if status_code is not None:
-                statuses[status_code] += 1
-            else:
-                statuses['unreached'] += 1
+            statuses[status_code] += 1
 
-        return len(self.__checked_sites), statuses
+            if result.get('err_reason') is not None:
+                sites_with_errors.append(url)
+
+        sites_with_error_map = {
+            index: site for index, site in enumerate(sites_with_errors, 1)
+        }
+
+        self.__statuses = statuses
+        self.__sites_with_error_map = sites_with_error_map
 
     def __print_results(self) -> None:
         """Prints general information based on site scan results."""
-        count_of_checked_sites, statuses = self.__calculate_results()
-        result = [f'Sites checked: {count_of_checked_sites}']
-        unreached = statuses.pop('unreached', None)
-        statuses = sorted(statuses.items())
+        if self.__checked_sites:
+            result = [f'Sites checked: {len(self.__checked_sites)}']
+            statuses = self.__statuses.copy()
+            unreached = statuses.pop(None, None)
+            statuses = sorted(statuses.items())
 
-        for status_code, count in statuses:
-            if status_code >= START_BAD_STATUS_CODE:
-                count = self.colorize(count)
-            result.append(f'{status_code}: {count}')
+            for status_code, count in statuses:
+                if status_code >= START_BAD_STATUS_CODE:
+                    count = self.colorize(count)
+                result.append(f'{status_code}: {count}')
 
-        if unreached:
-            result.append(f'unreached: {self.colorize(unreached)}')
+            if unreached:
+                result.append(f'unreached: {self.colorize(unreached)}')
 
-        print(' | '.join(result))
+            print(' | '.join(result))
 
     @classmethod
     def __check_content_length(
@@ -153,7 +233,8 @@ class Checker:
                 'status_code': response.status_code,
                 'headers': response.headers,
                 'history': response.history,
-                'err_reason': possible_error
+                'err_reason': possible_error,
+                'destination_url': response.url
             }
 
             response.raise_for_status()
@@ -168,7 +249,8 @@ class Checker:
                 'status_code': None,
                 'headers': None,
                 'history': None,
-                'err_reason': str(error)
+                'err_reason': str(error),
+                'destination_url': None
             }
 
     @classmethod
