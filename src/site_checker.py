@@ -19,7 +19,13 @@ from exceptions import BadSite
 
 class Checker:
     EXIT_ITEM: str = '0'
-    URL_REGEXP: str = r'(https?://)?([.\w-]+\.[\w-]{2,})(:\d+)?(/.+)?'
+    URL_REGEXP: str = (
+        r'(?P<protocol>https?://)?'
+        r'(?:(?P<host>[.\w-]+\.(?:xn\-\-[\w]+|[A-Za-z]{2,}))|'
+        r'(?P<ip>(?:[0-9]{1,3}\.){3}[0-9]{1,3}))'
+        r'(?P<port>:\d+)?'
+        r'(?P<path>/.+)?'
+    )
     PROBLEM_TEMPLATE = (
             'Requested url: {}\n'
             'Destination url: {}\n'
@@ -263,10 +269,12 @@ class Checker:
         if url is None:
             raise BadSite(f'BAD SITE: {site}. Skip.')
 
-        return (f'{url.group(1) or "http://"}'
-                f'{url.group(2)}'
-                f'{url.group(3) or ""}'
-                f'{url.group(4) or ""}'), url.group(2)
+        return (
+            f'{url.group("protocol") or "http://"}'
+            f'{url.group("host") or url.group("ip")}'
+            f'{url.group("port") or ""}'
+            f'{url.group("path") or ""}'
+        ), url.group("host") or url.group("ip")
 
     def __configure_request_headers(self) -> dict:
         """
