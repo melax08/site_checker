@@ -1,18 +1,29 @@
-# Python CLI site checker
+# Python CLI website and URLs checker
 
 <div>
-  <a href="#Features">Features</a>&nbsp;&nbsp;&nbsp;
+  <a href="#how-it-works">How it works?</a>&nbsp;&nbsp;&nbsp;
   <a href="#Installation">Installation</a>&nbsp;&nbsp;&nbsp;
   <a href="#How-to-use">How to use</a>&nbsp;&nbsp;&nbsp;
+  <a href="#Usage-examples">Usage examples</a>&nbsp;&nbsp;&nbsp;
+  <a href="#FAQ">FAQ</a>&nbsp;&nbsp;&nbsp;
+
 </div>
 
 ## Information
 
 ### Description
 
-This program with CLI-interface will help webmasters, system administrators and programmers check the functionality of the list of migrated sites.
+This program with CLI-interface will help webmasters, system administrators and programmers check the availability of the list of migrated websites and URLs.
 
 Imagine a situation: you need to **transfer 100+ websites** from one hosting to another, and then check their performance. Manually checking such a number of sites can take a very long time. With this program, you just need to list the necessary sites in a file, launch it and go drink coffee ☕
+
+### How it works?
+
+1. You specify the list of URLs to check using one of the methods described in <a href="#How-to-use">how to use section</a>.
+2. The program starts making requests to every URL and then, checks the <a href="https://en.wikipedia.org/wiki/List_of_HTTP_status_codes">response status codes</a>.
+In addition, the program checks the size of the requested page if the response code is `200 (OK)`. 
+3. While the program is running, you will see the progress of requests, status codes and <a href="#Output-explanation">other information</a>.
+4. At the end, the program will display a list of problematic requests: those with a status code of `4xx` or `5xx` or `200` with an empty page content.
 
 ### Features
 
@@ -79,7 +90,7 @@ In `help` you can see the whole list of application options.
 
 `-l` or `--list` - allows you to specify a list of sites to check directly in this argument. When using this argument, the `--file` argument will not work.
 
-`-v` or `--verify` - verifies SSL certificates for HTTPS requests just like a web browser. By default, ignore verifying the SSL certificate.
+`-v` or `--verify` - verifies SSL certificates for HTTPS requests just like a web browser. By default, ignore verifying the SSL certificate and allow self-signed certificates.
 
 ### Usage examples
 
@@ -102,13 +113,31 @@ Check the list of sites specified after `-l` argument:
 python3 site_checker.py -l example.com facebook.com google.com
 ```
 
+### Output explanation
+
+Using the example of a Google request:
+
+```shell
+200 - http://google.com (142.250.187.142) -> http://www.google.com/ - 0.42356
+```
+
+* `200` - the response status code.
+* `http://google.com` - source requested URL.
+* `142.250.187.142` - IP of the requested host.
+* `http://www.google.com/` - destination URL after all redirects.
+* `0.42356` - time spent on request in seconds.
+
 ### Additional settings
 You can also change some settings of the script in `constants.py` file.
 Here is a description of some settings:
 
 `REQUEST_TIMEOUT` - request timeout specified in seconds. Default: 10.
 
+### FAQ
 
+- Why not async?
+
+Because the main purpose of this program to delicately check availability of the specified URls. Async requests may increase load on server and make websites unavailable.
 
 ### Roadmap
 

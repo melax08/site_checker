@@ -151,7 +151,7 @@ class Checker:
         """Print all information about user-specified problem."""
         url = self.__sites_with_error_map[number]
         response_data = self.__checked_sites[url]
-        redirects = self.__processing_redirects(response_data.get('history'))
+        redirects = self.__processing_redirects(response_data.get('redirects'))
         print(self.PROBLEM_TEMPLATE.format(
             url,
             response_data.get('destination_url'),
@@ -238,7 +238,7 @@ class Checker:
                 'response_overall_info': response_info,
                 'status_code': response.status_code,
                 'headers': response.headers,
-                'history': response.history,
+                'redirects': response.history,
                 'err_reason': possible_error,
                 'destination_url': response.url
             }
@@ -254,7 +254,7 @@ class Checker:
                 'response_overall_info': response_info,
                 'status_code': None,
                 'headers': None,
-                'history': None,
+                'redirects': None,
                 'err_reason': str(error),
                 'destination_url': None
             }
