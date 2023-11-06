@@ -3,3 +3,4 @@ __pycache__/
 venv/
 .DS_Store
 some_file.py
+custom_list.txt

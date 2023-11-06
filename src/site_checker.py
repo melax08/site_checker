@@ -21,7 +21,7 @@ class Checker:
     EXIT_ITEM: str = '0'
     URL_REGEXP: str = (
         r'(?P<protocol>https?://)?'
-        r'(?:(?P<host>[.\w-]+\.(?:xn\-\-[\w]+|[A-Za-z]{2,}))|'
+        r'(?:(?P<host>[.\w-]+\.(?:xn\-\-[\w]+|[A-Za-zА-Яа-я]{2,}))|'
         r'(?P<ip>(?:[0-9]{1,3}\.){3}[0-9]{1,3}))'
         r'(?P<port>:\d+)?'
         r'(?P<path>/.+)?'
